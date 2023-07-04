@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-import fs from 'fs/promises';
-import os from 'os';
-import path from 'path';
-import readline from 'readline';
-import { ChatGPTAPI } from 'chatgpt';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import fs from "fs/promises";
+import os from "os";
+import path from "path";
+import readline from "readline";
+import { ChatGPTAPI } from "chatgpt";
+import { exec } from "child_process";
+import { promisify } from "util";
 const execAsync = promisify(exec);
 
 const TOKEN = await get_token();
@@ -70,8 +70,16 @@ The user system and shell version are:
 ${SHELL}
 
 In addition, the following commands are available:
-${await is_installed("kind2") ? "\n- kind2 check file.kind2: type-checks a file using the Kind-Lang" : ""}
-${await is_installed("ag") ? "\n- ag: the silver searcher. when using, show only file names." : ""}
+${
+  (await is_installed("kind2"))
+    ? "\n- kind2 check file.kind2: type-checks a file using the Kind-Lang"
+    : ""
+}
+${
+  (await is_installed("ag"))
+    ? "\n- ag: the silver searcher. when using, show only file names."
+    : ""
+}
 
 Guidelines:
 
@@ -91,14 +99,18 @@ When searching on file names, prefer 'find'; on contents, perfer 'ag'.
 
 Always assume commands are installed. Never write commands to install things.
 
-${await is_installed("kind2") ?
-`When the user asks to write a init file in Kind, write a single file with just 2
+${
+  (await is_installed("kind2"))
+    ? `When the user asks to write a init file in Kind, write a single file with just 2
 lines: the type and one equation with a hole. Do not include other definitions
 such as types: these already exist on Kindex.
-` : ""}
+`
+    : ""
+}
 
-${await is_installed("kind2") ?
-`When asked to create a new Kind file, write just a type and 1 clause. Example:
+${
+  (await is_installed("kind2"))
+    ? `When asked to create a new Kind file, write just a type and 1 clause. Example:
 
 Main (b: Bool) : Equal Bool (Bool.not (Bool.not b)) b
 Main b = ?hole_0
@@ -108,7 +120,9 @@ Do not include types or other definitions, they already exist on Kindex.
 Note: Kind is a language similar to Agda. Examples:
 
 ${get_kind_examples()}
-` : ""}
+`
+    : ""
+}
 `;
 
 // initialize ChatGPT API with your API key
@@ -120,18 +134,18 @@ const api = new ChatGPTAPI({
     stream: true,
     temperature: 0.5,
     max_tokens: 512,
-  }
+  },
 });
 
 // create readline interface for user input
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
 });
 
 // Yes most of this was written by GPT, how do you know?
 async function main(last_command_result = "", parent_message_id = null) {
-  rl.question('$ ', async (task) => {
+  rl.question("$ ", async (task) => {
     let lastTextLength = 0;
     console.log("\x1b[2m");
     const res = await api.sendMessage(last_command_result + task, {
@@ -141,7 +155,7 @@ async function main(last_command_result = "", parent_message_id = null) {
         const newText = partialResponse.text.slice(lastTextLength);
         process.stdout.write(newText);
         lastTextLength = partialResponse.text.length;
-      }
+      },
     });
     parent_message_id = res.id;
     console.log("\x1b[0m");
@@ -149,13 +163,14 @@ async function main(last_command_result = "", parent_message_id = null) {
     console.log("");
     const cod = extract_code(msg);
     if (cod) {
-      rl.question('\x1b[1mEXECUTE? [y/n]\x1b[0m ', async (answer) => {
+      rl.question("\x1b[1mEXECUTE? [y/n]\x1b[0m ", async (answer) => {
         console.log("");
-        if (answer.toLowerCase() === 'y' || answer === "") {
+        if (answer.toLowerCase() === "y" || answer === "") {
           exec(cod, (error, stdout, stderr) => {
             if (error) {
               console.error(`${error.message}`);
-              last_command_result = "Command failed. Output:\n" + error.message + "\n";
+              last_command_result =
+                "Command failed. Output:\n" + error.message + "\n";
             } else {
               if (stdout.length > 0) {
                 console.log(`${stdout}`);
@@ -163,7 +178,8 @@ async function main(last_command_result = "", parent_message_id = null) {
               if (stderr.length > 0) {
                 console.log(`${stderr}`);
               }
-              last_command_result = "Command executed. Output:\n" + stdout + "\n" + stderr + "\n";
+              last_command_result =
+                "Command executed. Output:\n" + stdout + "\n" + stderr + "\n";
             }
             main(last_command_result, parent_message_id);
           });
@@ -186,7 +202,7 @@ function extract_code(res) {
 
 async function is_installed(cmd) {
   try {
-    await execAsync('command -v '+cmd);
+    await execAsync("command -v " + cmd);
     return true;
   } catch (err) {
     return false;
@@ -194,16 +210,18 @@ async function is_installed(cmd) {
 }
 
 async function get_token() {
-  const tokenPath = path.join(os.homedir(), '.config', 'openai.token');
+  const tokenPath = path.join(os.homedir(), ".config", "openai.token");
   try {
-    const token = (await fs.readFile(tokenPath, 'utf8')).trim();
+    const token = (await fs.readFile(tokenPath, "utf8")).trim();
     return token;
   } catch (err) {
-    if (err.code === 'ENOENT') {
-      console.error('Error: openai.token file not found in ~/.config/');
-      console.error('Please make sure the file exists and contains your OpenAI API token.');
+    if (err.code === "ENOENT") {
+      console.error("Error: openai.token file not found in ~/.config/");
+      console.error(
+        "Please make sure the file exists and contains your OpenAI API token."
+      );
     } else {
-      console.error('Error reading openai.token file:', err.message);
+      console.error("Error reading openai.token file:", err.message);
     }
     process.exit(1);
   }
@@ -214,7 +232,9 @@ async function get_model() {
 }
 
 async function get_shell() {
-  const shellInfo = (await execAsync('uname -a && $SHELL --version')).stdout.trim();
+  const shellInfo = (
+    await execAsync("uname -a && $SHELL --version")
+  ).stdout.trim();
   return shellInfo;
 }
 
@@ -346,6 +366,6 @@ Nat.succ_not_zero a e =
   let emp = Bool.false_not_true app // empty
   emp
 `;
-};
+}
 
 main();
